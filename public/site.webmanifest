@@ -1,0 +1,15 @@
+{
+  "name": "Joran Vanpeene — Portfolio",
+  "short_name": "Joran Vanpeene",
+  "description": "Développeur & designer web indépendant à Aigre (16).",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "lang": "fr-FR",
+  "icons": [
+    { "src": "/favicon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/favicon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

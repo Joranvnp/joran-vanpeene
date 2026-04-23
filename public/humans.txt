@@ -1,0 +1,13 @@
+/* TEAM */
+    Développeur & designer : Joran Vanpeene
+    Site : https://joran-vanpeene.fr
+    Localisation : Aigre, Charente, France
+    GitHub : https://github.com/Joranvnp
+    LinkedIn : https://www.linkedin.com/in/joran-vanpeene/
+
+/* SITE */
+    Dernière mise à jour : 2026
+    Standards : HTML5, CSS3, TypeScript, React 18, Next.js 14
+    Composants : Next.js App Router, next/font, next/image
+    Hébergement : Vercel
+    Langue : fr-FR

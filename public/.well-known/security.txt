@@ -1,0 +1,4 @@
+Contact: mailto:joran.vanpeene@gmail.com
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: fr, en
+Canonical: https://joran-vanpeene.fr/.well-known/security.txt
