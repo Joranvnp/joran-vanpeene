@@ -436,7 +436,6 @@ function AboutSection() {
             Bonjour, je suis Joran Vanpeene. Depuis quatre ans, je conçois et développe des sites et des outils web pour des entreprises et indépendants qui veulent un résultat à la hauteur de leur activité. Basé en Charente, je travaille avec des clients partout en France.
           </ScrollRevealText>
           <p>Ce qui compte pour moi : un site qui vous ressemble, qui charge vite, que Google comprend, et qui convertit vos visiteurs en clients. Chaque outil est choisi en fonction de votre projet — jamais par habitude ou par effet de mode.</p>
-          <p>En dehors du travail : VTT, photo argentique, bière locale, et beaucoup de jazz en arrière-plan.</p>
           <div className="about-meta">
             <div><span className="mono-label">Basé à</span><b>Aigre (16)</b></div>
             <div><span className="mono-label">Clients</span><b>FR · UE · CA</b></div>
