@@ -33,9 +33,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --test tests/audit.test.cjs"
   },
   "dependencies": {
+    "cheerio": "1.0.0",
+    "ipaddr.js": "2.3.0",
     "next": "14.2.18",
     "react": "18.3.1",
     "react-dom": "18.3.1"

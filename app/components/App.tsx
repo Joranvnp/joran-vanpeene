@@ -767,141 +767,129 @@ function LabSection() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('intro');
+  const inFlight = useRef(false);
 
   const audit = async () => {
-    if (!url.trim()) { setError("Entre un nom de site (ex: mon-resto.fr)"); return; }
+    if (inFlight.current) return;
+    if (!url.trim()) { setError('Indiquez une adresse de site.'); return; }
+    inFlight.current = true;
     setError(''); setLoading(true); setTab('running'); setResult(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25_000);
     try {
-      const cleanUrl = url.trim().replace(/^https?:\/\//, '').replace(/\/$/, '');
       const resp = await fetch('/api/audit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: cleanUrl }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() }), signal: controller.signal,
       });
-      if (!resp.ok) throw new Error('backend ko');
-      const data = await resp.json();
-      setResult(data);
-      setTab('result');
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok || !Array.isArray(data?.checks)) {
+        throw new Error(data?.error || 'Le diagnostic est temporairement indisponible. Réessayez plus tard.');
+      }
+      setResult(data); setTab('result');
     } catch (e) {
-      setError("Oups, ça a coincé. Réessaie dans un instant.");
+      setError(e.name === 'AbortError' ? 'Le site met trop de temps à répondre. Réessayez plus tard.' : e.message);
       setTab('intro');
-    } finally { setLoading(false); }
+    } finally { clearTimeout(timeout); setLoading(false); inFlight.current = false; }
   };
+  const reset = () => { setTab('intro'); setResult(null); setUrl(''); setError(''); };
+  const statusLabel = { pass: 'Validé', warning: 'À examiner', info: 'À savoir' };
 
   return (
     <section id="lab" className="lab">
       <div className="section-head">
         <div className="section-head-left">
           <span className="mono-label">§ 06 · Lab — outil intégré</span>
-          <h2 className="section-title">
-            Un aperçu <em>des outils</em> que j'intègre.<br/>
-            <span className="section-title-small">Mini-audit de votre site, en direct.</span>
+          <h2 className="section-title">Votre site, <em>vu de près.</em><br/>
+            <span className="section-title-small">Un premier diagnostic, des constats vérifiables.</span>
           </h2>
         </div>
         <div className="section-head-right">
-          <p>Un exemple concret des modules intelligents que j'intègre pour mes clients, jouable ici même. Testez-le avec votre site (ou celui d'un concurrent) — tout se passe dans votre navigateur, rien n'est enregistré.</p>
+          <p>Entrez l’adresse d’une page publique. L’outil consulte son HTML et vérifie dix points simples : référencement, structure et premiers repères d’accessibilité. Chaque remarque s’appuie sur ce qu’il trouve.</p>
         </div>
       </div>
       <div className="lab-stage">
         <div className="lab-window">
           <div className="lab-window-bar">
-            <div className="lab-dots"><i/><i/><i/></div>
-            <div className="lab-url">
-              <span className="lab-url-lock">🔒</span>
-              <span className="lab-url-text">joran-vanpeene.fr / lab / audit</span>
-            </div>
-            <div className="lab-meta">LIVE · claude haiku</div>
+            <div className="lab-dots" aria-hidden="true"><i/><i/><i/></div>
+            <div className="lab-url"><span className="lab-url-text">Diagnostic de page web</span></div>
+            <div className="lab-meta">HTML · 10 contrôles</div>
           </div>
-          <div className="lab-content">
+          <div className="lab-content" aria-busy={loading}>
             {tab === 'intro' && (
-              <div className="lab-intro">
-                <div className="lab-intro-inner">
-                  <div className="lab-badge"><span className="dot-live" /> démo interactive — propulsée par IA</div>
-                  <h3 className="lab-h">Quel site souhaitez-vous auditer ?</h3>
-                  <p className="lab-p">Entrez une adresse (ou un nom de domaine). Vous recevez trois améliorations concrètes et un score global en moins de 10 secondes.</p>
-                  <div className="lab-form">
-                    <div className="lab-input">
-                      <span>https://</span>
-                      <input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && audit()} placeholder="votre-site.fr" autoComplete="off" />
-                    </div>
-                    <button className="btn btn-primary" onClick={audit} data-cursor="go">
-                      <span className="btn-label">Lancer l'audit</span>
-                      <span className="btn-arrow"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 11L11 3M11 3H5M11 3V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg></span>
-                    </button>
+              <div className="lab-intro"><div className="lab-intro-inner">
+                <div className="lab-badge">Lecture réelle de la page · sans IA</div>
+                <h3 className="lab-h">Que peut-on améliorer sur votre page ?</h3>
+                <p className="lab-p" id="audit-help">Titre, description, HTTPS, images, liens… Recevez les constats et jusqu’à trois pistes d’action prioritaires. Ce diagnostic porte sur une seule page, sans mesurer sa vitesse d’affichage.</p>
+                <form className="lab-form" onSubmit={e => { e.preventDefault(); audit(); }}>
+                  <div className="lab-input">
+                    <input aria-label="Adresse de la page à analyser" aria-describedby="audit-help" aria-invalid={!!error}
+                      value={url} onChange={e => setUrl(e.target.value)} placeholder="https://votre-site.fr"
+                      autoComplete="url" inputMode="url" maxLength={1500} required disabled={loading} />
                   </div>
-                  {error && <div className="lab-error">{error}</div>}
-                  <div className="lab-examples">
-                    <span className="mono-label">Essayez :</span>
-                    {['mon-resto.fr', 'menuiserie-dupont.fr', 'galerie-noire.com'].map(s => (
-                      <button key={s} className="lab-chip" onClick={() => setUrl(s)}>{s}</button>
-                    ))}
-                  </div>
+                  <button className="btn btn-primary" type="submit" disabled={loading} data-cursor="go">
+                    <span className="btn-label">Analyser la page</span><span className="btn-arrow" aria-hidden="true">↗</span>
+                  </button>
+                </form>
+                {error && <div className="lab-error" role="alert">{error}</div>}
+                <div className="lab-examples"><span className="mono-label">Un exemple :</span>
+                  <button className="lab-chip" onClick={() => setUrl('https://joran-vanpeene.fr')}>Mon portfolio</button>
                 </div>
-              </div>
+              </div></div>
             )}
             {tab === 'running' && (
-              <div className="lab-running">
-                <div className="lab-run-scan">
-                  <div className="lab-run-grid">
-                    {Array.from({ length: 40 }).map((_, i) => (
-                      <div key={i} className="lab-run-cell" style={{ animationDelay: `${(i % 8) * 50}ms` }} />
-                    ))}
-                  </div>
-                  <div className="lab-run-scanline" />
-                </div>
+              <div className="lab-running" role="status" aria-live="polite">
+                <div className="lab-run-scan" aria-hidden="true"><div className="lab-run-grid">
+                  {Array.from({ length: 40 }).map((_, i) => <div key={i} className="lab-run-cell" style={{ animationDelay: `${(i % 8) * 50}ms` }} />)}
+                </div><div className="lab-run-scanline" /></div>
                 <div className="lab-run-log">
-                  <div className="lab-log-line"><span className="lab-log-ok">✓</span> chargement de {url}</div>
-                  <div className="lab-log-line"><span className="lab-log-ok">✓</span> analyse perf + accessibilité</div>
-                  <div className="lab-log-line"><span className="lab-log-ok">✓</span> lecture du DOM & contenu</div>
-                  <div className="lab-log-line lab-log-live"><span className="lab-log-spin" /> synthèse IA en cours…</div>
+                  <div className="lab-log-line lab-log-live"><span className="lab-log-spin" aria-hidden="true" /> Consultation et analyse en cours…</div>
+                  <p className="audit-note">L’outil attend la réponse de la page et vérifie son contenu. Cela peut prendre quelques secondes.</p>
                 </div>
               </div>
             )}
             {tab === 'result' && result && (
               <div className="lab-result">
                 <div className="lab-result-head">
-                  <div>
-                    <span className="mono-label">Audit de</span>
-                    <div className="lab-result-url">{result.url}</div>
-                  </div>
-                  <div className="lab-score">
-                    <svg viewBox="0 0 80 80" width="96" height="96">
-                      <circle cx="40" cy="40" r="34" stroke="var(--line)" strokeWidth="6" fill="none" />
-                      <circle cx="40" cy="40" r="34" stroke="var(--accent)" strokeWidth="6" fill="none"
-                        strokeDasharray={`${(result.score / 100) * 213.6} 213.6`}
-                        strokeLinecap="round" transform="rotate(-90 40 40)" />
-                    </svg>
-                    <div className="lab-score-num">{result.score}</div>
-                    <div className="lab-score-sub">sur 100</div>
+                  <div><span className="mono-label">Page consultée</span><div className="lab-result-url">{result.url}</div></div>
+                  <div className="audit-count" role="status" aria-live="polite">
+                    <strong>{result.passed}<span> / {result.checked}</span></strong><span>contrôles validés</span>
                   </div>
                 </div>
-                <p className="lab-summary">« {result.summary} »</p>
-                <div className="lab-improvements">
-                  {result.improvements?.map((imp, i) => (
-                    <div key={i} className="lab-imp">
-                      <div className="lab-imp-head">
-                        <span className="lab-imp-num">0{i + 1}</span>
-                        <h4>{imp.title}</h4>
-                        <span className={`lab-imp-impact lab-imp-impact-${(imp.impact || 'moyen').toLowerCase().replace('é','e')}`}>{imp.impact}</span>
-                      </div>
-                      <p>{imp.detail}</p>
-                    </div>
-                  ))}
+                <div className="audit-context">
+                  <span>Consultée le {new Date(result.fetchedAt).toLocaleString('fr-FR')}</span>
+                  <span>HTTP {result.httpStatus} · HTML : {Math.round(result.htmlBytes / 1024)} Ko</span>
+                  {result.redirects > 0 && <span>{result.redirects} redirection(s) suivie(s)</span>}
                 </div>
+                <p className="lab-summary">{result.summary}</p>
+                {result.notAssessed > 0 && <p className="audit-note">{result.notAssessed} contrôle(s) informatif(s) ou non applicable(s), exclus du total. Dix points examinés au départ.</p>}
+                {result.partial && <p className="audit-notice">Le HTML reçu contient peu de texte et des scripts. Une partie du contenu peut apparaître seulement après exécution de JavaScript : le diagnostic est partiel.</p>}
+                {result.improvements.length > 0 && <>
+                  <h3 className="audit-subtitle">Par où commencer</h3>
+                  <div className="lab-improvements">
+                    {result.improvements.map((item, i) => <div key={item.id} className="lab-imp">
+                      <div className="lab-imp-head"><span className="lab-imp-num">0{i + 1}</span><h4>{item.title}</h4></div>
+                      <span className="audit-priority">Priorité {item.priority}</span>
+                      <p><strong>Constat.</strong> {item.evidence}</p><p><strong>Action.</strong> {item.action}</p>
+                    </div>)}
+                  </div>
+                </>}
+                <details className="audit-details">
+                  <summary>Voir les {result.total} contrôles et leurs constats</summary>
+                  <div className="audit-checks">{result.checks.map(check => <div className="audit-check" key={check.id}>
+                    <div className="audit-check-heading"><h4>{check.title}</h4><span className={`audit-status audit-status-${check.status}`}>{statusLabel[check.status]}</span></div>
+                    <p>{check.evidence}</p>{check.action && <p><strong>À faire :</strong> {check.action}</p>}
+                  </div>)}</div>
+                </details>
+                <p className="audit-note">{result.limitations}</p>
                 <div className="lab-result-foot">
-                  <button className="btn btn-ghost" onClick={() => { setTab('intro'); setResult(null); setUrl(''); }}>← Nouvel audit</button>
-                  <a href="#contact" className="btn btn-primary" data-cursor="discuter">
-                    <span className="btn-label">En discuter avec moi</span>
-                    <span className="btn-arrow"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 11L11 3M11 3H5M11 3V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg></span>
-                  </a>
+                  <button className="btn btn-ghost" onClick={reset}>← Nouvelle analyse</button>
+                  <a href="#contact" className="btn btn-primary" data-cursor="discuter"><span className="btn-label">En discuter avec moi</span><span className="btn-arrow" aria-hidden="true">↗</span></a>
                 </div>
               </div>
             )}
           </div>
         </div>
-        <div className="lab-foot">
-          <span className="mono-label">Outil temps réel · 100% dans votre navigateur · rien n'est envoyé à des tiers</span>
-        </div>
+        <div className="lab-foot"><p className="audit-note">L’adresse est transmise à mon serveur, qui consulte la page publique. Aucun modèle d’IA n’est utilisé pour ce diagnostic. N’indiquez pas de lien privé ni d’adresse contenant un code d’accès.</p></div>
       </div>
     </section>
   );
