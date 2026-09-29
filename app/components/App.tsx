@@ -11,6 +11,8 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import Image from 'next/image';
+import projectData from '../../data/projects.json';
 
 const clamp = (v, mn, mx) => Math.max(mn, Math.min(mx, v));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -313,70 +315,111 @@ function Hero() {
   );
 }
 
-const PROJECTS = [
-  { num: '01', title: 'Premier projet', kind: 'Bientôt — projet en cours de finalisation', year: '2026', tags: ['React', 'Next.js'], swatch: 'oklch(0.72 0.14 55)', preview: 'soon' },
-  { num: '02', title: 'Deuxième projet', kind: 'Bientôt — en production', year: '2026', tags: ['Design', 'Dev'], swatch: 'oklch(0.55 0.09 160)', preview: 'soon' },
-  { num: '03', title: 'Troisième projet', kind: 'Bientôt — en cours de conception', year: '2026', tags: ['UX', 'UI'], swatch: 'oklch(0.35 0.04 280)', preview: 'soon' },
-];
+// Edit project content in data/projects.json; add screenshots to public/projects/.
+const PROJECTS = projectData.filter(project => project.visible !== false);
 
-function ProjectPreview({ kind }) {
+function ProjectVisual({ project, index }) {
+  const [failed, setFailed] = useState(false);
+  const src = /^\/projects\/[^?#]+\.(png|jpe?g|webp|avif)$/i.test(project.image) ? project.image : '';
   return (
-    <div className="pp pp-soon">
-      <div className="pp-soon-inner">
-        <div className="pp-soon-dot" />
-        <div className="pp-soon-label">Bientôt</div>
-        <div className="pp-soon-title">Projet en cours</div>
-        <div className="pp-soon-sub">Les premières études de cas seront publiées ici très prochainement.</div>
-      </div>
+    <div className="project-visual" style={{ backgroundColor: project.color }}>
+      {src && !failed ? <Image src={src} alt={project.imageAlt || `Aperçu de ${project.title}`}
+        width={1280} height={900} sizes="(max-width: 820px) 90vw, 360px" onError={() => setFailed(true)} /> :
+        <div className="project-placeholder">
+          <span className="project-placeholder-top">{project.comingSoon ? 'Présentation à venir' : 'Aperçu à venir'}</span>
+          <span className="project-placeholder-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+          <span className="project-placeholder-bottom">{project.title}</span>
+        </div>}
     </div>
   );
 }
 
 function WorkSection() {
-  const [hover, setHover] = useState(null);
-  const [coords, setCoords] = useState({ x: 0, y: 0 });
-  const sectionRef = useRef(null);
+  const [hover, setHover] = useState<number | null>(null);
+  const [enhanced, setEnhanced] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const position = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, initialized: false });
+  const hasProjects = PROJECTS.some(project => !project.comingSoon);
 
-  const onMove = (e) => {
-    if (!sectionRef.current) return;
-    const r = sectionRef.current.getBoundingClientRect();
-    setCoords({ x: e.clientX - r.left, y: e.clientY - r.top });
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 821px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)');
+    const update = () => { setEnhanced(media.matches); setHover(null); };
+    update(); media.addEventListener('change', update);
+    const hide = () => setHover(null);
+    window.addEventListener('scroll', hide, { passive: true });
+    window.addEventListener('blur', hide);
+    return () => { media.removeEventListener('change', update); window.removeEventListener('scroll', hide); window.removeEventListener('blur', hide); };
+  }, []);
+
+  const active = enhanced && hover !== null;
+  useEffect(() => {
+    if (!active) return;
+    let frame = 0;
+    const tick = () => {
+      const p = position.current;
+      p.x += (p.targetX - p.x) * .16;
+      p.y += (p.targetY - p.y) * .16;
+      if (previewRef.current) previewRef.current.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [active]);
+
+  const move = (event, index: number) => {
+    if (!enhanced || event.pointerType === 'touch') return;
+    const p = position.current;
+    p.targetX = clamp(event.clientX - 180, 16, window.innerWidth - 376);
+    p.targetY = clamp(event.clientY - 150, 96, Math.max(96, window.innerHeight - 316));
+    if (!p.initialized) { p.x = p.targetX; p.y = p.targetY; p.initialized = true; }
+    setHover(index);
   };
 
   return (
-    <section id="work" className="work" ref={sectionRef} onMouseMove={onMove}>
+    <section id="work" className={`work work-gallery ${enhanced ? 'work-gallery-enhanced' : ''}`} onKeyDown={event => { if (event.key === 'Escape') setHover(null); }}>
       <div className="section-head">
         <div className="section-head-left">
           <span className="mono-label">§ 02 · Projets sélectionnés</span>
-          <h2 className="section-title">Des choses concrètes, <br/><em>livrées en production.</em></h2>
+          <h2 className="section-title">Des idées, <br/><em>des réalisations.</em></h2>
         </div>
-        <div className="section-head-right">
-          <p>Les premières études de cas sont en cours de rédaction. Elles seront mises en ligne dès que les projets actuels seront livrés en production.</p>
-        </div>
+        <div className="section-head-right"><p>{hasProjects
+          ? 'Une sélection de projets : leur contexte, les choix de conception et le résultat.'
+          : 'Les premières présentations de projets arrivent bientôt.'}</p></div>
       </div>
-      <ul className="work-list" onMouseLeave={() => setHover(null)}>
-        {PROJECTS.map((p, i) => (
-          <li key={p.num} className={`work-row ${hover === i ? 'work-row-hover' : ''} ${hover !== null && hover !== i ? 'work-row-dim' : ''}`} onMouseEnter={() => setHover(i)} data-cursor="ouvrir">
-            <a href={`#project-${p.num}`} className="work-row-inner">
-              <span className="work-num">({p.num})</span>
-              <span className="work-title">{p.title}<span className="work-swatch" style={{ background: p.swatch }} /></span>
-              <span className="work-kind">{p.kind}</span>
-              <span className="work-year">{p.year}</span>
-              <span className="work-arrow"><svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 14L14 4M14 4H7M14 4V11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg></span>
-            </a>
-          </li>
-        ))}
+      <ul className="work-list" onPointerLeave={() => setHover(null)} onPointerCancel={() => setHover(null)}>
+        {PROJECTS.map((project, index) => {
+          let url = '';
+          try { const parsed = new URL(project.url); if (['http:', 'https:'].includes(parsed.protocol)) url = parsed.href; } catch { /* no public link yet */ }
+          if (project.comingSoon) url = '';
+          const content = <>
+            <span className="work-num">({String(index + 1).padStart(2, '0')})</span>
+            <span className="project-title-group"><span className="work-title">{project.title}</span><span className="project-mobile-kind">{project.category}</span></span>
+            <span className="work-kind">{project.category}</span><span className="work-year">{project.year}</span>
+            <span className="work-arrow" aria-hidden="true">{url ? '↗' : '—'}</span>
+          </>;
+          return <li key={project.id} className={`work-row ${hover === index ? 'work-row-hover' : ''} ${active && hover !== index ? 'work-row-dim' : ''}`}
+            onPointerEnter={event => move(event, index)} onPointerMove={event => move(event, index)}>
+            {url ? <a href={url} target="_blank" rel="noopener noreferrer" className="work-row-inner" data-cursor="voir" aria-label={`${project.title} — ouvrir le site dans un nouvel onglet`}>{content}</a>
+              : <div className="work-row-inner" tabIndex={0} aria-label={`${project.title} — ${project.category}`}>{content}</div>}
+            {project.description && <p className="project-description">{project.description}</p>}
+            <div className="project-inline"><ProjectVisual key={project.image} project={project} index={index}/>
+              {project.tags.length > 0 && <div className="project-tags">{project.tags.map(tag => <span key={tag}>{tag}</span>)}</div>}
+            </div>
+          </li>;
+        })}
       </ul>
-      {hover !== null && (
-        <div className="work-preview" style={{ left: coords.x, top: coords.y }}>
-          <ProjectPreview kind={PROJECTS[hover].preview} />
-          <div className="work-preview-tags">{PROJECTS[hover].tags.map(t => <span key={t}>{t}</span>)}</div>
+      <div className="project-follow" ref={previewRef} aria-hidden="true">
+        <div className={`project-follow-window ${active ? 'is-visible' : ''}`}>
+          <div className="project-slides" style={{ transform: `translateY(-${(hover ?? 0) * 100}%)` }}>
+            {PROJECTS.map((project, index) => <div className="project-slide" key={project.id}>
+              <ProjectVisual key={project.image} project={project} index={index}/>
+              <div className="project-slide-caption"><span>{project.category}</span><span>{project.comingSoon ? 'Bientôt' : 'Aperçu du projet'}</span></div>
+            </div>)}
+          </div>
         </div>
-      )}
-      <div className="work-foot">
-        <span className="mono-label">Nouveaux projets bientôt disponibles</span>
-        <a href="#contact" className="link-plain" data-cursor="→">Discuter d'un projet →</a>
       </div>
+      <div className="work-foot"><span className="mono-label">{hasProjects ? `${PROJECTS.filter(project => !project.comingSoon).length} projet(s) présenté(s)` : 'Nouveaux projets bientôt disponibles'}</span>
+        <a href="#contact" className="link-plain" data-cursor="→">Discuter d’un projet →</a></div>
     </section>
   );
 }

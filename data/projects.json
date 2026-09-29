@@ -1,0 +1,44 @@
+[
+  {
+    "id": "premier-projet",
+    "title": "Premier projet",
+    "category": "Présentation à venir",
+    "description": "",
+    "year": "2026",
+    "image": "",
+    "imageAlt": "",
+    "url": "",
+    "tags": [],
+    "color": "#b66c3f",
+    "comingSoon": true,
+    "visible": true
+  },
+  {
+    "id": "deuxieme-projet",
+    "title": "Deuxième projet",
+    "category": "Présentation à venir",
+    "description": "",
+    "year": "2026",
+    "image": "",
+    "imageAlt": "",
+    "url": "",
+    "tags": [],
+    "color": "#466b62",
+    "comingSoon": true,
+    "visible": true
+  },
+  {
+    "id": "troisieme-projet",
+    "title": "Troisième projet",
+    "category": "Présentation à venir",
+    "description": "",
+    "year": "2026",
+    "image": "",
+    "imageAlt": "",
+    "url": "",
+    "tags": [],
+    "color": "#61516f",
+    "comingSoon": true,
+    "visible": true
+  }
+]
